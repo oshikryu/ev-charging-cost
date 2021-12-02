@@ -77,10 +77,8 @@ const getStatus = (str) => {
 
 
 async function listRelevantMail(auth) {
-  // const START_OF_MONTH = DateTime.local().startOf('month').toFormat('yyyy/LL/dd')
-  // const END_OF_MONTH = DateTime.local().endOf('month').toFormat('yyyy/LL/dd')
-  const START_OF_MONTH = '2021/11/01'
-  const END_OF_MONTH = '2021/11/30'
+  const START_OF_MONTH = DateTime.local().startOf('month').toFormat('yyyy/LL/dd')
+  const END_OF_MONTH = DateTime.local().endOf('month').toFormat('yyyy/LL/dd')
   const DATE_RANGE = `after:${START_OF_MONTH} before:${END_OF_MONTH}`
   const PROVIDER = 'Starlink_Services@notifications.subaru.com'
   const STARLINK_QUERY = `from:${PROVIDER} ${DATE_RANGE}`
