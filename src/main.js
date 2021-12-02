@@ -1,110 +1,136 @@
-const CLIENT_ID = process.env.EV_CLIENT_ID
-const API_KEY = process.env.EV_API_KEY
+import fs from 'fs'
+import readline from 'readline'
+import { google } from 'googleapis'
+import { DateTime } from 'luxon'
 
-if (window.sessionStorage) {
-  // Client ID and API key from the Developer Console
+// If modifying these scopes, delete token.json.
+const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
+// The file token.json stores the user's access and refresh tokens, and is
+// created automatically when the authorization flow completes for the first
+// time.
+const TOKEN_PATH = 'token.json';
 
-  // Array of API discovery doc URLs for APIs used by the quickstart
-  var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"];
+// Load client secrets from a local file.
+fs.readFile('credentials.json', (err, content) => {
+  if (err) return console.log('Error loading client secret file:', err);
+  // Authorize a client with credentials, then call the Gmail API.
+  authorize(JSON.parse(content), listRelevantMail);
+});
 
-  // Authorization scopes required by the API; multiple scopes can be
-  // included, separated by spaces.
-  var SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
+/**
+ * Create an OAuth2 client with the given credentials, and then execute the
+ * given callback function.
+ * @param {Object} credentials The authorization client credentials.
+ * @param {function} callback The callback to call with the authorized client.
+ */
+function authorize(credentials, callback) {
+  const {client_secret, client_id, redirect_uris} = credentials.web;
+  const oAuth2Client = new google.auth.OAuth2(
+      client_id, client_secret, redirect_uris[0]);
 
-  var authorizeButton = document.getElementById('authorize_button');
-  var signoutButton = document.getElementById('signout_button');
+  // Check if we have previously stored a token.
+  fs.readFile(TOKEN_PATH, (err, token) => {
+    if (err) return getNewToken(oAuth2Client, callback);
+    oAuth2Client.setCredentials(JSON.parse(token));
+    callback(oAuth2Client);
+  });
+}
 
-  /**
-    *  On load, called to load the auth2 library and API client library.
-    */
-  function handleClientLoad() {
-    gapi.load('client:auth2', initClient);
-  }
-
-  /**
-    *  Initializes the API client library and sets up sign-in state
-    *  listeners.
-    */
-  function initClient() {
-    gapi.client.init({
-      apiKey: API_KEY,
-      clientId: CLIENT_ID,
-      discoveryDocs: DISCOVERY_DOCS,
-      scope: SCOPES
-    }).then(function () {
-      // Listen for sign-in state changes.
-      gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-
-      // Handle the initial sign-in state.
-      updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-      authorizeButton.onclick = handleAuthClick;
-      signoutButton.onclick = handleSignoutClick;
-    }, function(error) {
-      appendPre(JSON.stringify(error, null, 2));
+/**
+ * Get and store new token after prompting for user authorization, and then
+ * execute the given callback with the authorized OAuth2 client.
+ * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
+ * @param {getEventsCallback} callback The callback for the authorized client.
+ */
+function getNewToken(oAuth2Client, callback) {
+  const authUrl = oAuth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: SCOPES,
+  });
+  console.log('Authorize this app by visiting this url:', authUrl);
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  rl.question('Enter the code from that page here: ', (code) => {
+    rl.close();
+    oAuth2Client.getToken(code, (err, token) => {
+      if (err) return console.error('Error retrieving access token', err);
+      oAuth2Client.setCredentials(token);
+      // Store the token to disk for later program executions
+      fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
+        if (err) return console.error(err);
+        console.log('Token stored to', TOKEN_PATH);
+      });
+      callback(oAuth2Client);
     });
-  }
+  });
+}
 
-  /**
-    *  Called when the signed in status changes, to update the UI
-    *  appropriately. After a sign-in, the API is called.
-    */
-  function updateSigninStatus(isSignedIn) {
-    if (isSignedIn) {
-      authorizeButton.style.display = 'none';
-      signoutButton.style.display = 'block';
-      listLabels();
-    } else {
-      authorizeButton.style.display = 'block';
-      signoutButton.style.display = 'none';
+const getStatus = (str) => {
+  if (str.includes('complete')) {
+    return 'end'
+  } else {
+    return 'start'
+  }
+}
+
+
+async function listRelevantMail(auth) {
+  // const START_OF_MONTH = DateTime.local().startOf('month').toFormat('yyyy/LL/dd')
+  // const END_OF_MONTH = DateTime.local().endOf('month').toFormat('yyyy/LL/dd')
+  const START_OF_MONTH = '2021/11/01'
+  const END_OF_MONTH = '2021/11/30'
+  const DATE_RANGE = `after:${START_OF_MONTH} before:${END_OF_MONTH}`
+  const PROVIDER = 'Starlink_Services@notifications.subaru.com'
+  const STARLINK_QUERY = `from:${PROVIDER} ${DATE_RANGE}`
+
+  const gmail = google.gmail({version: 'v1', auth});
+  const res = await gmail.users.messages.list({
+    format: 'json',
+    userId: 'me',
+    q: STARLINK_QUERY,
+  });
+
+  const messageObjects = await Promise.all(res.data.messages.map(async ({id}) => {
+    const { data } = await gmail.users.messages.get({
+      userId: 'me',
+      id,
+    })
+
+    const status = getStatus(data.snippet)
+    const internal = Number(data.internalDate)
+    const date = DateTime.fromMillis(internal).toFormat('LL/dd')
+    const time = DateTime.fromMillis(internal).toLocaleString(DateTime.TIME_24_SIMPLE)
+
+    return {
+      internal,
+      date,
+      time, 
+      status,
     }
+  }))
+
+  const all = []
+  let temp_block = []
+  messageObjects.sort(function(a, b) {
+    return a.internal - b.internal
+  }).forEach((msg) => {
+    if (temp_block.length === 0) {
+      temp_block.push(msg.status)
+      temp_block.push(msg.date)
+    }
+    temp_block.push(`${msg.time}`)
+    if (msg.status === 'end') {
+      all.push(temp_block)
+      temp_block = []
+    }
+  })
+  if (temp_block.length) {
+    all.push(temp_block)
   }
 
-  /**
-    *  Sign in the user upon button click.
-    */
-  function handleAuthClick(event) {
-    gapi.auth2.getAuthInstance().signIn();
-  }
+  console.log(all);
 
-  /**
-    *  Sign out the user upon button click.
-    */
-  function handleSignoutClick(event) {
-    gapi.auth2.getAuthInstance().signOut();
-  }
-
-  /**
-    * Append a pre element to the body containing the given message
-    * as its text node. Used to display the results of the API call.
-    *
-    * @param {string} message Text to be placed in pre element.
-    */
-  function appendPre(message) {
-    var pre = document.getElementById('content');
-    var textContent = document.createTextNode(message + '\n');
-    pre.appendChild(textContent);
-  }
-
-  /**
-    * Print all Labels in the authorized user's inbox. If no labels
-    * are found an appropriate message is printed.
-    */
-  function listLabels() {
-    gapi.client.gmail.users.labels.list({
-      'userId': 'me'
-    }).then(function(response) {
-      var labels = response.result.labels;
-      appendPre('Labels:');
-
-      if (labels && labels.length > 0) {
-        for (i = 0; i < labels.length; i++) {
-          var label = labels[i];
-          appendPre(label.name)
-        }
-      } else {
-        appendPre('No Labels found.');
-      }
-    });
-  }
-
+  return all
 }
