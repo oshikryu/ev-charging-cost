@@ -75,6 +75,28 @@ const getStatus = (str) => {
   }
 }
 
+const MAX_KWH = 8.8
+const MAX_TIME_HOURS = 5
+const PRICE = 0.3
+
+const calculateCost = (arr) => {
+  const totalCost = arr.map((line) => {
+    // only grab completed charges
+    if (line.length > 1) {
+      const hours = (line[1] - line[0]) / 1000 / 60 / 60
+      const fraction = hours / MAX_TIME_HOURS
+      return fraction * MAX_KWH * PRICE;
+    } else {
+      return 0
+    }
+  }).reduce((prev, cur) => {
+    return prev + cur
+  }, 0)
+
+  console.log(`Total cost: $${totalCost}`)
+  return totalCost
+}
+
 
 async function listRelevantMail(auth) {
   const START_OF_MONTH = DateTime.local().startOf('month').toFormat('yyyy/LL/dd')
@@ -109,26 +131,52 @@ async function listRelevantMail(auth) {
     }
   }))
 
-  const all = []
-  let temp_block = []
+  let displayArray = 'date\tstart\tend\n'
+  const calculateArray = []
+  const orphanTimes = []
+  let tempBlock = ''
+  let calculateBlock = []
+
   messageObjects.sort(function(a, b) {
     return a.internal - b.internal
   }).forEach((msg) => {
-    if (temp_block.length === 0) {
-      temp_block.push(msg.status)
-      temp_block.push(msg.date)
+    if (tempBlock.length === 0) {
+      tempBlock = tempBlock.concat(`${msg.date} \t`)
     }
-    temp_block.push(`${msg.time}`)
+
+    if (msg.status !== 'end') {
+      if (calculateBlock.length === 1) {
+        displayArray = displayArray.concat(`${tempBlock}\n`)
+      }
+
+      tempBlock = ''
+      tempBlock = tempBlock.concat(`${msg.date} \t`)
+
+      orphanTimes.push([msg.date, msg.internal])
+    }
+
+    tempBlock = tempBlock.concat(`${msg.time} \t`)
+    calculateBlock.push(msg.internal)
+
     if (msg.status === 'end') {
-      all.push(temp_block)
-      temp_block = []
+      displayArray = displayArray.concat(`${tempBlock}\n`)
+      tempBlock = ''
+
+      // prevent orphan end time emails
+      if (calculateBlock[0] && calculateBlock[1]) {
+        calculateArray.push([calculateBlock[0], calculateBlock[1]])
+      } else {
+        orphanTimes.push([msg.date, msg.internal])
+      }
+      calculateBlock = []
     }
   })
-  if (temp_block.length) {
-    all.push(temp_block)
+
+  // leftover
+  if (tempBlock.length) {
+    displayArray = displayArray.concat(`${tempBlock}\n`)
   }
+  console.log(displayArray);
 
-  console.log(all);
-
-  return all
+  return calculateCost(calculateArray)
 }
