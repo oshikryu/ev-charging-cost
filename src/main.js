@@ -139,14 +139,24 @@ async function listRelevantMail(auth) {
 
   messageObjects.sort(function(a, b) {
     return a.internal - b.internal
-  }).forEach((msg) => {
+  }).forEach((msg, idx) => {
     if (tempBlock.length === 0) {
       tempBlock = tempBlock.concat(`${msg.date} \t`)
+    }
+
+    // prevent weird utc holdover of previous month
+    const curMonth = new Date().getMonth();
+    const emailMonth = new Date(msg.internal).getMonth();
+
+    if (curMonth !== emailMonth) {
+      return;
     }
 
     if (msg.status !== 'end') {
       if (calculateBlock.length === 1) {
         displayArray = displayArray.concat(`${tempBlock}\n`)
+        // remove orphan start and start over
+        calculateBlock.pop();
       }
 
       tempBlock = ''
@@ -156,6 +166,7 @@ async function listRelevantMail(auth) {
     }
 
     tempBlock = tempBlock.concat(`${msg.time} \t`)
+    
     calculateBlock.push(msg.internal)
 
     if (msg.status === 'end') {
