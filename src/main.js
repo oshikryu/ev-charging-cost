@@ -100,7 +100,7 @@ const calculateCost = (arr) => {
 
 async function listRelevantMail(auth) {
   const START_OF_MONTH = DateTime.local().startOf('month').toFormat('yyyy/LL/dd')
-  const END_OF_MONTH = DateTime.local().endOf('month').toFormat('yyyy/LL/dd')
+  const END_OF_MONTH = DateTime.local().endOf('month').plus({days: 1, hours: 8}).toFormat('yyyy/LL/dd')
   const DATE_RANGE = `after:${START_OF_MONTH} before:${END_OF_MONTH}`
   const PROVIDER = 'Starlink_Services@notifications.subaru.com'
   const STARLINK_QUERY = `from:${PROVIDER} ${DATE_RANGE}`
