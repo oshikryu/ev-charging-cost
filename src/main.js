@@ -70,8 +70,10 @@ function getNewToken(oAuth2Client, callback) {
 const getStatus = (str) => {
   if (str.includes('complete')) {
     return 'end'
-  } else {
+  } else if (str.includes('started')) {
     return 'start'
+  } else {
+    return null
   }
 }
 
@@ -112,7 +114,7 @@ async function listRelevantMail(auth) {
     q: STARLINK_QUERY,
   });
 
-  const messageObjects = await Promise.all(res.data.messages.map(async ({id}) => {
+  const unfilteredMessageObjects = await Promise.all(res.data.messages.map(async ({id}) => {
     const { data } = await gmail.users.messages.get({
       userId: 'me',
       id,
@@ -130,6 +132,10 @@ async function listRelevantMail(auth) {
       status,
     }
   }))
+
+  const messageObjects = unfilteredMessageObjects.filter((msg) => {
+    return ['end', 'start'].includes(msg.status);
+  })
 
   let displayArray = 'date\tstart\tend\n'
   const calculateArray = []
