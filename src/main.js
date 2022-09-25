@@ -77,17 +77,51 @@ const getStatus = (str) => {
   }
 }
 
+const TIER_1_END_HOUR = 15
+const TIER_2_END_HOUR = 16
+const TIER_3_END_HOUR = 21
+const TIER_4_END_HOUR = 24
+
+const TIER_1 = 'tier_1'
+const TIER_2 = 'tier_2'
+const TIER_3 = 'tier_3'
+const TIER_4 = 'tier_4'
+
 const MAX_KWH = 8.8
 const MAX_TIME_HOURS = 5
-const PRICE = 0.3
+const MAX_TIME_MINUTES = 300
+const MAX_TIME_SECONDS = 18000
+
+const OFF_PEAK_PRICE = 0.25
+const PARTIAL_PEAK_PRICE = 0.45
+const PEAK_PRICE = 0.56
+
+const MAX_PRICE = MAX_KWH * PEAK_PRICE // 4.928
+const MIN_PRICE = MAX_KWH * OFF_PEAK_PRICE // 2.2
+
+const tier_to_start_price = {
+ [TIER_1]: TIER_1_END_HOUR,
+ [TIER_2]: TIER_2_END_HOUR,
+ [TIER_3]: TIER_3_END_HOUR,
+ [TIER_4]: TIER_4_END_HOUR,
+}
+
+const tier_to_price = {
+ [TIER_1]: OFF_PEAK_PRICE,
+ [TIER_2]: PARTIAL_PEAK_PRICE,
+ [TIER_3]: PEAK_PRICE,
+ [TIER_4]: PARTIAL_PEAK_PRICE,
+}
 
 const calculateCost = (arr) => {
-  const totalCost = arr.map((line) => {
+  const totalCost = arr.map((line, idx) => {
+    const start_epoch = line[0]
+    const end_epoch = line[1]
     // only grab completed charges
     if (line.length > 1) {
-      const hours = (line[1] - line[0]) / 1000 / 60 / 60
-      const fraction = hours / MAX_TIME_HOURS
-      return fraction * MAX_KWH * PRICE;
+      const cost = splitIntoTiersCost(start_epoch, end_epoch)
+      console.log(start_epoch, end_epoch, cost);
+      return cost
     } else {
       return 0
     }
@@ -97,6 +131,47 @@ const calculateCost = (arr) => {
 
   console.log(`Total cost: $${totalCost}`)
   return totalCost
+}
+
+const getTier = (epoch) => {
+  const epochHour = DateTime.fromMillis(epoch).hour
+
+  if (epochHour >=0 && epochHour < 15) {
+    return TIER_1
+  } else if (epochHour >= 15 && epochHour < 16) {
+    return TIER_2
+  } else if (epochHour >= 16 && epochHour < 21) {
+    return TIER_3
+  } else if (epochHour >= 21 && epochHour < 24) {
+    TIER_4
+  }
+}
+
+/*
+ * Split start and end time into array of arrays for each tier
+ *
+ * @method splitIntoTiersCost
+ * @return {Array} {fraction, tier price}
+ */
+const splitIntoTiersCost = (start_epoch, end_epoch) => {
+  const startTier = getTier(start_epoch)
+  const endTier = getTier(end_epoch)
+
+  // same tier
+  if (startTier === endTier) {
+    const hours = (end_epoch - start_epoch) / 1000 / 60 / 60
+    const fraction = hours / MAX_TIME_HOURS
+    return fraction * MAX_KWH * tier_to_price[startTier];
+  } else {
+    const newHour = tier_to_start_price[startTier]
+    const splitStartEpoch = DateTime.fromMillis(start_epoch).set({hour: newHour, minute: 0, seconds: 0}).minus({second: 1})
+    const splitEndEpoch = DateTime.fromMillis(start_epoch).set({hour: newHour, minute: 0, seconds: 0})
+    if (splitEndEpoch > end_epoch) {
+      return splitIntoTiersCost(start_epoch, end_epoch)
+    }
+
+    return splitIntoTiersCost(start_epoch, splitStartEpoch.toMillis()) + splitIntoTiersCost(splitEndEpoch.toMillis(), end_epoch)
+  }
 }
 
 
@@ -128,7 +203,7 @@ async function listRelevantMail(auth) {
     return {
       internal,
       date,
-      time, 
+      time,
       status,
     }
   }))
@@ -172,7 +247,7 @@ async function listRelevantMail(auth) {
     }
 
     tempBlock = tempBlock.concat(`${msg.time} \t`)
-    
+
     calculateBlock.push(msg.internal)
 
     if (msg.status === 'end') {
