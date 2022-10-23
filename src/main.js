@@ -3,6 +3,11 @@ import readline from 'readline'
 import { google } from 'googleapis'
 import { DateTime } from 'luxon'
 
+// Manually override orphan times with an end time
+const ORPHAN_ENDTIME_OVERRIDES = [
+  "October 4 2022 15:12"
+]
+
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 // The file token.json stores the user's access and refresh tokens, and is
@@ -120,7 +125,7 @@ const calculateCost = (arr) => {
     // only grab completed charges
     if (line.length > 1) {
       const cost = splitIntoTiersCost(start_epoch, end_epoch)
-      console.log(start_epoch, end_epoch, cost);
+      console.log(new Date(start_epoch), new Date(end_epoch), cost);
       return cost
     } else {
       return 0
@@ -237,13 +242,12 @@ async function listRelevantMail(auth) {
       if (calculateBlock.length === 1) {
         displayArray = displayArray.concat(`${tempBlock}\n`)
         // remove orphan start and start over
-        calculateBlock.pop();
+        const orphan = calculateBlock.pop();
+        orphanTimes.push(orphan)
       }
 
       tempBlock = ''
       tempBlock = tempBlock.concat(`${msg.date} \t`)
-
-      orphanTimes.push([msg.date, msg.internal])
     }
 
     tempBlock = tempBlock.concat(`${msg.time} \t`)
@@ -257,8 +261,6 @@ async function listRelevantMail(auth) {
       // prevent orphan end time emails
       if (calculateBlock[0] && calculateBlock[1]) {
         calculateArray.push([calculateBlock[0], calculateBlock[1]])
-      } else {
-        orphanTimes.push([msg.date, msg.internal])
       }
       calculateBlock = []
     }
@@ -268,6 +270,14 @@ async function listRelevantMail(auth) {
   if (tempBlock.length) {
     displayArray = displayArray.concat(`${tempBlock}\n`)
   }
+
+  // TODO: unlikely to unplug over a period of two dates
+  // add in orphan time overrides
+  ORPHAN_ENDTIME_OVERRIDES.forEach((orphanEndTime, idx) => {
+    const endMillis = new Date(orphanEndTime).getTime()
+    calculateArray.push([orphanTimes[idx], endMillis])
+  })
+
   console.log(displayArray);
 
   return calculateCost(calculateArray)
