@@ -5,7 +5,9 @@ import { DateTime } from 'luxon'
 
 // Manually override orphan times with an end time
 const ORPHAN_ENDTIME_OVERRIDES = [
-  "October 4 2022 15:12"
+  // "October 4 2022 15:12",
+  // null,
+  // "October 26 2022 12:24",
 ]
 
 // If modifying these scopes, delete token.json.
@@ -274,8 +276,10 @@ async function listRelevantMail(auth) {
   // TODO: unlikely to unplug over a period of two dates
   // add in orphan time overrides
   ORPHAN_ENDTIME_OVERRIDES.forEach((orphanEndTime, idx) => {
-    const endMillis = new Date(orphanEndTime).getTime()
-    calculateArray.push([orphanTimes[idx], endMillis])
+    if (orphanEndTime != null) {
+      const endMillis = new Date(orphanEndTime).getTime()
+      calculateArray.push([orphanTimes[idx], endMillis])
+    }
   })
 
   console.log(displayArray);
