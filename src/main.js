@@ -127,7 +127,9 @@ const calculateCost = (arr) => {
     // only grab completed charges
     if (line.length > 1) {
       const cost = splitIntoTiersCost(start_epoch, end_epoch)
-      console.log(new Date(start_epoch), new Date(end_epoch), cost);
+      const startText = DateTime.fromMillis(start_epoch).toFormat('LL/dd HH:mm')
+      const endText = DateTime.fromMillis(end_epoch).toFormat('LL/dd HH:mm')
+      console.log(`${startText} - ${endText}:`, cost);
       return cost
     } else {
       return 0
@@ -150,7 +152,7 @@ const getTier = (epoch) => {
   } else if (epochHour >= 16 && epochHour < 21) {
     return TIER_3
   } else if (epochHour >= 21 && epochHour < 24) {
-    TIER_4
+    return TIER_4
   }
 }
 
@@ -177,7 +179,9 @@ const splitIntoTiersCost = (start_epoch, end_epoch) => {
       return splitIntoTiersCost(start_epoch, end_epoch)
     }
 
-    return splitIntoTiersCost(start_epoch, splitStartEpoch.toMillis()) + splitIntoTiersCost(splitEndEpoch.toMillis(), end_epoch)
+    const firstSplit = splitIntoTiersCost(start_epoch, splitStartEpoch.toMillis())
+    const secondSplit = splitIntoTiersCost(splitEndEpoch.toMillis(), end_epoch)
+    return  firstSplit + secondSplit
   }
 }
 
