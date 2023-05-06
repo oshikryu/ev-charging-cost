@@ -187,6 +187,8 @@ const splitIntoTiersCost = (start_epoch, end_epoch) => {
 
 
 async function listRelevantMail(auth) {
+  // const START_OF_MONTH = '2023/04/01'
+  // const END_OF_MONTH = '2023/05/02'
   const START_OF_MONTH = DateTime.local().startOf('month').toFormat('yyyy/LL/dd')
   const END_OF_MONTH = DateTime.local().endOf('month').plus({days: 1, hours: 8}).toFormat('yyyy/LL/dd')
   const DATE_RANGE = `after:${START_OF_MONTH} before:${END_OF_MONTH}`
@@ -237,6 +239,8 @@ async function listRelevantMail(auth) {
     }
 
     // prevent weird utc holdover of previous month
+    // TODO: modify this to get previous month
+    // const curMonth = new Date().getMonth() - 1;
     const curMonth = new Date().getMonth();
     const emailMonth = new Date(msg.internal).getMonth();
 
