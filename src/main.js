@@ -8,7 +8,14 @@ const ORPHAN_ENDTIME_OVERRIDES = [
   // "October 4 2022 15:12",
   // null,
   // "October 26 2022 12:24",
+  // "May 7 2023 20:00",
+  // "May 8 2023 12:45",
+  // "May 14 2023 11:18",
+  // "May 14 2023 18:00",
 ]
+
+// NOTE: for historical calculation, subtract from current month HERE
+const PREV_MONTH_OFFSET = 0;
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
@@ -187,10 +194,8 @@ const splitIntoTiersCost = (start_epoch, end_epoch) => {
 
 
 async function listRelevantMail(auth) {
-  // const START_OF_MONTH = '2023/04/01'
-  // const END_OF_MONTH = '2023/05/02'
-  const START_OF_MONTH = DateTime.local().startOf('month').toFormat('yyyy/LL/dd')
-  const END_OF_MONTH = DateTime.local().endOf('month').plus({days: 1, hours: 8}).toFormat('yyyy/LL/dd')
+  const START_OF_MONTH = DateTime.local().startOf('month').minus({month: PREV_MONTH_OFFSET}).toFormat('yyyy/LL/dd')
+  const END_OF_MONTH = DateTime.local().endOf('month').minus({month: PREV_MONTH_OFFSET}).plus({days: 1, hours: 8}).toFormat('yyyy/LL/dd')
   const DATE_RANGE = `after:${START_OF_MONTH} before:${END_OF_MONTH}`
   const PROVIDER = 'Starlink_Services@notifications.subaru.com'
   const STARLINK_QUERY = `from:${PROVIDER} ${DATE_RANGE}`
@@ -239,9 +244,8 @@ async function listRelevantMail(auth) {
     }
 
     // prevent weird utc holdover of previous month
-    // TODO: modify this to get previous month
-    // const curMonth = new Date().getMonth() - 1;
-    const curMonth = new Date().getMonth();
+
+    const curMonth = new Date().getMonth() - PREV_MONTH_OFFSET;
     const emailMonth = new Date(msg.internal).getMonth();
 
     if (curMonth !== emailMonth) {
