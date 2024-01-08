@@ -12,6 +12,9 @@ const ORPHAN_ENDTIME_OVERRIDES = [
   // "May 8 2023 12:45",
   // "May 14 2023 11:18",
   // "May 14 2023 18:00",
+  // "Dec 19 2023 3:30",
+  // "Dec 20 2023 13:15"
+  "Jan 07 2024 04:16"
 ]
 
 // NOTE: for historical calculation, subtract from current month HERE
@@ -106,12 +109,12 @@ const MAX_TIME_HOURS = 5
 const MAX_TIME_MINUTES = 300
 const MAX_TIME_SECONDS = 18000
 
-const OFF_PEAK_PRICE = 0.25
-const PARTIAL_PEAK_PRICE = 0.45
-const PEAK_PRICE = 0.56
+const OFF_PEAK_PRICE = 0.34
+const PARTIAL_PEAK_PRICE = 0.51
+const PEAK_PRICE = 0.53
 
-const MAX_PRICE = MAX_KWH * PEAK_PRICE // 4.928
-const MIN_PRICE = MAX_KWH * OFF_PEAK_PRICE // 2.2
+const MAX_PRICE = MAX_KWH * PEAK_PRICE // 4.664
+const MIN_PRICE = MAX_KWH * OFF_PEAK_PRICE // 2.992
 
 const tier_to_start_price = {
  [TIER_1]: TIER_1_END_HOUR,
