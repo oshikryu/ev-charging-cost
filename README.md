@@ -13,12 +13,12 @@ yarn start
 ## Costs
 
 ```
-const MAX_PRICE = MAX_KWH * PEAK_PRICE // 4.928
-const MIN_PRICE = MAX_KWH * OFF_PEAK_PRICE // 2.2
+const MAX_PRICE = MAX_KWH * PEAK_PRICE // 4.664
+const MIN_PRICE = MAX_KWH * OFF_PEAK_PRICE // 2.99
 ```
 
 Assuming 34 mpg, min/max ev costs for a gallon
-$4.40 to $9.60
+$5.18 to $9.20
 
 ## Orphan times
 Fill in `orphan-endtimes.md` for a source of truth
