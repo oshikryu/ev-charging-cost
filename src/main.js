@@ -16,8 +16,9 @@ const ORPHAN_ENDTIME_OVERRIDES = [
   // "Dec 20 2023 13:15"
   // "Jan 07 2024 04:16",
   // "Jan 20 2024 18:00",
-  "Feb 12 2024 15:00",
-  "Feb 18 2024 16:20",
+  // "Feb 12 2024 15:00",
+  // "Feb 18 2024 16:20",
+  "Mar 2 2024 17:30",
 ]
 
 // NOTE: for historical calculation, subtract from current month HERE
